@@ -1,0 +1,5 @@
+import(clValid, cluster, fpc, methods, rgl)
+export(COMMUNAL, clusterKeys, examineCounts, returnCore, clusterRange, plotRange3D)
+exportClasses(
+    "COMMUNAL" 
+)

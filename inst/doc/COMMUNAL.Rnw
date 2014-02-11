@@ -1,0 +1,158 @@
+\documentclass[a4paper]{article}
+\usepackage{a4wide}
+\setlength{\parskip}{0.7ex plus0.1ex minus0.1ex}
+\setlength{\parindent}{0em}
+
+\SweaveOpts{engine=R}
+%\VignetteIndexEntry{COMMUNAL: A Robust Method for Selection of Cluster Number K}
+%\VignetteKeyword{clustering}
+%\VignettePackage{COMMUNAL}
+
+\title{COmbined Mapping of Multiple clUsteriNg ALgorithms (COMMUNAL):
+  A Robust Method for Selection of Cluster Number K}
+\author{Albert Chen \\ Stanford University \and 
+      Timothy E Sweeney \\ Stanford University \and 
+      Olivier Gevaert \\ Stanford University}
+
+\begin{document}
+\maketitle
+\SweaveOpts{concordance=TRUE}
+
+\section*{Introduction}
+We are often interested to understand the underlying structure of our data. One such way is to group the data into clusters of similar data points. There are many algorithms that can find such clusters (e.g. kmeans, hierarchical, sota), and we aggregate their results to arrive at a more robust result. However, we don't initially know what the best number of clusters is for the data. For biological data, we may believe there is a `true' number of clusters with some biological  meaning. We would like to discover the optimal number of clusters $k$. After discovering this, we can combine the cluster assignments of each clustering algorithm (with $k$ clusters) to arrive at a robust clustering. This package allows for both these steps: first identifying the best value of $k$, and then combining the cluster assignments from multiple algorithms to identify `core' clusters in the data. 
+
+\section*{Tutorial}
+Let's start with a small example. We first create an artificial data set with 3 distinct clusters. We would hope to ``discover'' that the optimal $k = 3$.
+\begin{center}
+<<fig=TRUE>>=
+## create artificial data set with 3 distinct clusters in two dimensions
+set.seed(1)
+V1 = c(abs(rnorm(20, 2, 20)), abs(rnorm(20, 65, 15)), abs(rnorm(20, 140, 20)))
+V2 = c(abs(rnorm(20, 2, 20)), abs(rnorm(20, 65, 15)), abs(rnorm(20, 105, 20)))
+data <- t(data.frame(V1, V2))
+colnames(data) <- paste("Sample", 1:ncol(data), sep="")
+rownames(data) <- paste("Gene", 1:nrow(data), sep="")
+plot(V1, V2, col=rep(c("red", "blue", "black"), each=20), pch=rep(c(0,1,2), each=100),
+     xlab="x", ylab="y")
+@
+\end{center}
+
+\subsection*{Identifying $k$}
+The first step is to run a few clustering algorithms on our data, trying each value of $k$ we think is reasonable. The function \texttt{COMMUNAL} runs the clustering algorithms. The main arguments are the values of $k$ (number of clusters) to try, and the clustering algorithms to use. The available clustering algorithms are \texttt{hierarchical, kmeans, diana, fanny, som, model, sota, pam, clara, agnes, ccp-hc, ccp-km, ccp-pam, nmf}. In this list, \texttt{nmf} corresponds to \texttt{nmf} in package \texttt{NMF}, \texttt{ccp-xx} corresponds to \texttt{xx} in package \texttt{ConsensusClusterPlus}, and the rest match to the algorithm of the same name in package \texttt{clValid}. By default, it runs \texttt{hierarchical} and \texttt{kmeans}.
+
+By default, seven different validation measures are evaluated (\texttt{Connectivity}, \texttt{dunn}, \texttt{wb.ratio}, \texttt{g3}, \texttt{g2}, \texttt{pearsongamma}, \texttt{avg.silwidth}, \texttt{sindex}). Other validation metrics are available as well. Each of these is a measure of how well a particular clustering separates the data into clusters. With the exception of ``Connectivity'', which is calculated by \texttt{clValid::connectivity}, these are calculated with \texttt{fpc::cluster.stats}.
+
+These settings can be adjusted with the \texttt{clus.methods} and \texttt{validation} parameters. Here we run the clustering for each value of $k$ between 2 and 5 inclusive.
+<<>>=
+## run COMMUNAL with defaults
+library(COMMUNAL)
+ks <- seq(2,5)
+result <- COMMUNAL(data=data, ks=ks)
+@
+
+The return value is an object of (reference) class \texttt{COMMUNAL} (same name as the function). The default print method shows the $k$'s used, and the original call.
+<<>>=
+result
+@
+
+For each algorithm and value of $k$, the validation measures are computed. They can be accessed like this.
+<<>>=
+str(result$measures)
+@
+
+Let's visualize these validation scores to pick the optimal value of $k$. We're going to use the results from hierarchical and kmeans clustering, and only consider the validation metrics \texttt{wb.ratio}, \texttt{avg.silwidth}, and \texttt{dunn} (which are generally the most useful, in our testing). The validation metrics are standardized and averaged into a single score, such that a higher plotted value is better. Note that for some metrics, like \texttt{wb.ratio}, a lower value is naturally better; this is handled internally by pre-multiplying the standardized values by -1 before aggregating the metrics into a single score.
+
+The \texttt{plotRange3D} function produces a plot of the aggregated validation score for each value of $k$. This normally produces a 3D plot using the package ``rgl''. Note that in this example we don't utilize the third dimension, so we just get the 2D plot. See section \texttt{Identifying $k$ - additional tools} for an example of how the 3D plot is used. The optimal value of $k$ corresponds to the peak, in this case at $k = 3$.
+
+\begin{center}
+<<fig=TRUE>>=
+result.list <- list(list(result), ncol(data))
+goodAlgs <- c('hierarchical', 'kmeans')
+goodMeasures <- c('wb.ratio', 'avg.silwidth', 'dunn')
+values <- plotRange3D(result.list, ks, goodAlgs, goodMeasures)
+@
+\end{center}
+
+Refer to the documentation for additional options for \texttt{COMMUNAL} and more usage examples.
+
+\subsection*{Extracting Core Clusters}
+After looking at these results, we are satisfied that $k = 3$ is optimal. The next step is to extract the cluster assignments for $k = 3$ with \texttt{getClustering}. It returns a data frame whose rows are the samples and columns are the clustering algorithm names. Each entry is the cluster assignment of a sample from the respective algorithm. This is the input used in identifying `core' clusters.
+<<>>=
+clusters <- result$getClustering(k=3)
+table(clusters)
+@
+
+From the table, you can see that sometimes kmeans and hierarchical clustering disagree, but in general the clusters fall into three groups of about equal size (just as expected). Now we combine the results to get final cluster assignments. This shows that the algorithms agree on all but 1 of the assignments (which ends up in cluster 0)
+<<>>=
+# find 'core' clusters
+mat.key <- clusterKeys(clusters, k=3)
+examineCounts(mat.key)
+core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters
+table(core) # the 'core' clusters
+head(core) # the cluster assignments
+@
+
+Now let's consider a more involved example of how \texttt{clusterKeys} and \texttt{returnCore} are useful. Consider the following cluster assignments. Overall the algorithms agree that there are three clusters, but differ in how they label the clusters. They disagree about the cluster of the last point.
+<<>>=
+k <- 3
+clusters <- data.frame(
+  alg1=as.integer(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,1)),
+  alg2=as.integer(c(1,1,1,1,1,3,3,3,3,3,2,2,2,2,1)),
+  alg3=as.integer(c(3,3,3,3,3,1,1,1,1,1,2,2,2,2,2))
+)
+@
+
+\texttt{clusterKeys} reindexes the labels for each algorithm to make the agreement more apparent.
+<<>>=
+mat.key <- clusterKeys(clusters, k)
+mat.key # cluster indices are relabeled
+@
+
+The next step is to synthesize these into ``core'' clusters. The clusters are assigned by majority vote. If not enough algorithms agree, based on a user-defined threshold, the cluster is left undetermined. \texttt{examineCounts} shows how many samples would be undetermined at various threshold levels.
+<<>>=
+examineCounts(mat.key)
+@
+
+Now we use a threshold to retrieve the ``core'' clusters. The default threshold is 50\%, meaning that more than 50\% of the algorithms must agree. In this case, if we use the 50\% threshold, then all points are assigned to some cluster.
+<<>>=
+core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters
+table(core) # the 'core' clusters
+@
+
+However, if we require all algorithms to agree, then one point is undetermined (hence labeled as cluster 0).
+<<>>=
+core <- returnCore(mat.key, agreement.thresh=99)
+table(core) # 0 is undetermined
+@
+
+\subsection*{Identifying $k$ - additional tools}
+The third dimension of the validation measure plot is used to show the results of multiple runs of \texttt{COMMUNAL} on different subsets of the data. Often there are extraneous dimensions which make it harder to cluster the data. One solution is to only use the dimensions in which the data points have the highest variance when clustering, since these are the dimensions in which the data are most separated.
+
+So for each run, we subset the data and cluster using just the $x$ dimensions with the highest variance. Then the validation scores from all runs are plotted together on a 3D plot. Additionally, the scores from all the runs are aggregated to get a score for each $k$, and these are shown in the 2D plot. Ideally the algorithms will work the regardless of the number of dimensions and we'll identify a consistently optimal number of clusters. If not, we might get different results, in which case we'd want to check the cluster assignments and raw validation metrics for further assessment.
+
+The \texttt{clusterRange} function provides a harness to \texttt{COMMUNAL} for this purpose. Here I load some breast cancer data for 533 tissues and their expression levels of 100 genes. We'll use 50, 70, 85, and 100 genes (i.e. dimensions) for clustering the tissues.
+<<>>=
+data(BRCA.100)
+algs <- c("hierarchical", "kmeans", "agnes")
+measures <- c('wb.ratio', 'dunn', 'avg.silwidth')
+varRange <- c(50, 70, 85, 100)
+ks <- 2:5
+range.results <- clusterRange(dataMtx=BRCA.100, varRange=varRange,
+                              ks = ks,
+                              clus.methods = algs,
+                              validation = measures)
+@
+
+Now \texttt{range.results} contains the results from running \texttt{COMMUNAL} on the subsetted data. We can generate the plots using \texttt{plotRange3D}. These indicate that two clusters is best. (As it turns out, if we cluster using more than 100 genes, we find that the data better separate into 3 clusters.)
+\begin{center}
+<<fig=TRUE>>=
+plot.data <- plotRange3D(range.results, ks, algs, measures, filename='snapshot.png')
+@
+\end{center}
+
+Here is a snapshot of the 3D plot. This shows the results before aggregation into the 2D plot above. The red dots mark the most concave non-edge point, if the function is concave somewhere, or the absolute maximum otherwise. The z-axis has labels for Tukey's five number summary of all the values. For an interactive 3D example of \texttt{plotRange3D}, you may run this code yourself or see the help page for \texttt{plotRange3D}.
+\begin{center}
+\includegraphics[width=0.5\textwidth]{snapshot.png}
+\end{center}
+
+\end{document}
