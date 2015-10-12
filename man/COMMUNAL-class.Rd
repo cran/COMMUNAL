@@ -36,7 +36,7 @@ rownames(data) <- paste("Gene", 1:nrow(data), sep="")
 result <- COMMUNAL(data=data, ks=seq(2,5))  # result is a COMMUNAL object
 k <- 3                                # suppose optimal cluster number is 3
 clusters <- result$getClustering(k)   # extract clusters
-mat.key <- clusterKeys(clusters, k=k) # get core clusters
+mat.key <- clusterKeys(clusters)      # get core clusters
 examineCounts(mat.key)                # all algorithms agree
 core <- returnCore(mat.key, agreement.thresh=50) # find 'core' cluster assignments
 table(core) # the 'core' cluster sizes

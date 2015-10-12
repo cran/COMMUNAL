@@ -1,34 +1,39 @@
 \name{plotRange3D}
 \alias{plotRange3D}
 \title{
-Visualize cluster quality
+Visualize cluster stability
 }
 \description{
-Given \code{\link{COMMUNAL}} outputs for a dataset, summarize the suitability of a
-range of cluster numbers according to validation measures. Input can be the output of
-\code{clusterRange}.
+Given \code{\link{clusterRange}} output for a dataset, visualize the cluster optimality output for a range of K over a range of variable measures.
 }
 \usage{
-plotRange3D(test_range, ks, goodAlgs, goodMeasures, filename=NULL, ...)
+plotRange3D(clusRange, ks=NULL, goodAlgs=NULL, goodMeasures=NULL, filename=NULL,
+            colorbar=T, minSize = 3, plot3D=T, ...)
 }
 \arguments{
-  \item{test_range}{
-list of 2 items, where first element is list of \code{"\linkS4class{COMMUNAL}"} objects,
-and second is a vector of the number of data points clustered for each element in the list. Can be the output of \code{\link{clusterRange}}.
+  \item{clusRange}{
+The output of \code{\link{clusterRange}}.
 }
   \item{ks}{
-range of cluster number k to plot. Must be subset of ks supplied to \code{\link{COMMUNAL}}.
+range of cluster number k to plot. If NULL, plots all ks in clusRange.
 }
   \item{goodAlgs}{
-which algorithms to use in summarizing validation measures. Must be subset of 
-algorithms supplied to \code{\link{COMMUNAL}}.
+which algorithms to use in summarizing validation measures. If NULL, plots all algorithms in clusRange.
 }
   \item{goodMeasures}{
-which validation measures to use in summarizing validation measures. Must be subset of 
-measures supplied to \code{\link{COMMUNAL}}.
+which validation measures to use in summarizing validation measures. If NULL, plots all validity measures in clusRange.
 }
   \item{filename}{
 optionally specify filename to save a snapshot of the 3D image.
+}
+  \item{colorbar}{
+Whether to draw the front right color legend in the output.
+}
+  \item{minSize}{
+The minimum acceptable size for a cluster. \code{plotRange3D} tests all algorithms for clusters <minSize and prints these to command line. The purpose of this is to alert the user that the passed algorithms may not be ideal. We recommend calling \code{\link{getGoodAlgs}} to decrease the number of non-robust algorithms. Having some clusters <minSize may be unavoidable, but should be minimized.
+}
+  \item{plot3D}{
+Whether to do a 3D plot at all. If rgl() will not work locally, this allows the user to still see the 2D plot.
 }
   \item{\dots}{
 other arguments to pass down to 2D plot of mean z-score against k.
@@ -45,14 +50,15 @@ multiplied by negative one. Furthermore, each measure is scaled to have zero mea
 unit variance across all the datasets prior to averaging, so each measure has equal
 weight, and we can compare the plot across datasets.
 
-If the wrong number of clusters was identified
 }
 \value{
 A 3D plot is generated, using the package "rgl".
 A matrix of the plotted values is returned.
-A 2D plot of average metric against k is also generated.
+A 2D plot of average metric against k (i.e., the mean over varRange) is also generated.
 }
-
+\note{
+rgl is a finnicky (but great!) package; we do not maintain it. Please address rgl questions to the rgl package maintainers.
+}
 \author{
 Albert Chen and Timothy E Sweeney\cr
 Maintainer: Albert Chen acc2015@stanford.edu
@@ -60,10 +66,13 @@ Maintainer: Albert Chen acc2015@stanford.edu
 
 \examples{
 \dontrun{
-data(BRCA.results) # clusterRange output for breast cancer dataset
-goodAlgs <- c("hierarchical", "kmeans", "model", "agnes", "som")
-goodMeasures <- c('wb.ratio', 'avg.silwidth', 'dunn')
-ks <- 2:8
-(values <- plotRange3D(BRCA.results, ks, goodAlgs, goodMeasures))
+## clusterRange output for breast cancer dataset
+data(BRCA.results) 
+
+## automated selection of optimal algorithms and validity measures
+goodAlgs <- getGoodAlgs(BRCA.results)
+goodMeasures <- getNonCorrNonMonoMeasures(BRCA.results)
+
+(values <- plotRange3D(BRCA.results, goodAlgs, goodMeasures))
 }
 }

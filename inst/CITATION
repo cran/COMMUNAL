@@ -1,0 +1,7 @@
+bibentry(bibtype = 'Article',   
+  title = 'COmbined Mapping of Multiple clUsteriNg ALgorithms (COMMUNAL): A Robust Method for Selection of Cluster Number K',   
+  author = c(person('Timothy E', 'Sweeney'),   person('Albert C', 'Chen'),  person('Olivier', 'Gevaert')),   
+  journal = 'Scientific Reports',       
+  year = 2015,         
+  url = 'http://CRAN.R-project.org/package=COMMUNAL')
+

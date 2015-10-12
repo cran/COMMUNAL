@@ -1,5 +1,9 @@
-import(clValid, cluster, fpc, methods, rgl)
-export(COMMUNAL, clusterKeys, examineCounts, returnCore, clusterRange, plotRange3D)
+import(clValid, cluster, fpc, methods)
+importFrom("grDevices", "rainbow")
+importFrom("graphics", "axis")
+importFrom("stats", "as.dist", "cor", "cutree", "dist", "fivenum", "sd", "var", "complete.cases", "hclust", "median", "runif")
+importFrom("utils", "tail")
+export(COMMUNAL, clusterRange, plotRange3D, measuresCorr, getGoodAlgs, testAlgsMinSize, getNonCorrNonMonoMeasures, monotoneClusterRange, clusterKeys, examineCounts, returnCore)
 exportClasses(
     "COMMUNAL" 
 )

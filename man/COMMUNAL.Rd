@@ -6,16 +6,19 @@ Run clustering algorithms and evaluate validation metrics.
 \description{
 This functions runs various (user-specified) clustering algorithms on the data, for each potential number of clusters \code{k}. It then runs internal validation measures the quantify the fit of each clustering. The returned object is of class \code{"\linkS4class{COMMUNAL}"}, and can be used to identify 'core' clusters in the data. Currently supported clustering algorithms are those in packages "clValid", "NMF", and "ConsensusClusterPlus".
 
-To determine the optimal number of clusters, use the \code{\link{clusterRange}} and \code{\link{plotRange3D}} functions.
+The COMMUNAL algorithm is designed to be run with \code{\link{clusterRange}}, via a call to COMMUNAL() (although this may still be useful to some researchers). After running \code{\link{clusterRange}}, use \code{\link{getGoodAlgs}} and \code{\link{getNonCorrNonMonoMeasures}} to get locally optimized clustering algorithms and validity measures. 
+
+To determine the optimal number of clusters, use the \code{\link{plotRange3D}} function.
+
 }
 \usage{
-COMMUNAL(data, ks = 2:10, clus.methods = c("hierarchical", "kmeans"),
-
-         validation = c("Connectivity", "dunn", "wb.ratio", "g3", "g2",
-                        "pearsongamma", "avg.silwidth", "sindex"), 
-         dist.metric = "euclidean", aggl.method = "average", 
-
-         neighb.size = 10, seed = NULL, ...)
+COMMUNAL(data, ks, clus.methods = c("hierarchical", "kmeans", "diana",
+                                    "som", "sota", "pam", "clara", "agnes"), 
+         validation = c("Connectivity", "dunn", "wb.ratio", "g3", 
+                        "g2", "pearsongamma", "avg.silwidth", "sindex"), 
+         dist.metric = "euclidean", aggl.method = "ward", 
+         neighb.size = 10, seed = NULL, parallel=F, gapBoot=20, 
+         verbose=F, mc.cores=NULL, ...) 
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -30,19 +33,32 @@ Character vector of which clustering methods to use. Valid options: "\code{hiera
 pkg{ConsensusClusterPlus}, and the rest match to the method of the same name in package \pkg{clValid}.
 }
   \item{validation}{
-A character vector of the validation measures to consider. Valid options: "\code{Connectivity}", "\code{average.between}", "\code{g2}", "\code{ch}", "\code{sindex}","\code{avg.silwidth}", "\code{average.within}", "\code{dunn}", "\code{widestgap}", "\code{wb.ratio}", "\code{entropy}", "\code{dunn2}", "\code{pearsongamma}", "\code{g3}", "\code{within.cluster.ss}", "\code{min.separation}", "\code{max.diameter}". With the exception of "\code{Connectivity}", which is calculated by \code{clValid::connectivity}, these are calculated with \code{fpc::cluster.stats}.
+A character vector of the validation measures to consider. Valid options: "\code{Connectivity}", "\code{average.between}", "\code{g2}", "\code{ch}", "\code{sindex}","\code{avg.silwidth}", "\code{average.within}", "\code{dunn}", "\code{widestgap}", "\code{wb.ratio}", "\code{entropy}", "\code{dunn2}", "\code{pearsongamma}", "\code{g3}", "\code{within.cluster.ss}", "\code{min.separation}", "\code{max.diameter}", "\code{gapStatistic}". With the exception of "\code{Connectivity}", which is calculated by \code{clValid::connectivity}, and "\code{gapStatistic}", which is implemented by COMMUNAL based on cluster::clusGap(), these are calculated with \code{fpc::cluster.stats}.
 }
   \item{dist.metric}{
 Which metric to use when calculating the distance matrix. Used by \pkg{clValid} clustering algorithms, and in calculating validation measures. Available choices are "\code{euclidean}", "\code{correlation}", "\code{manhattan}".
 }
   \item{aggl.method}{
-The agglomeration method to use for "\code{hclust}" and "\code{agnes}" (if specified in \code{clus.methods}). Available choices are "\code{ward}", "\code{single}", "\code{complete}", "\code{average}".
+The agglomeration method to use for "\code{hclust}" and "\code{agnes}" (if specified in \code{clus.methods}). Available choices are "\code{ward}", "\code{ward.D}", "\code{ward.D2}", "\code{single}", "\code{complete}", "\code{average}".
+The ward methods have not been implemented in clValid as of this writing.
 }
   \item{neighb.size}{
 Numeric value. The neighborhood size used for calculating the \code{Connectivity} validation measure.
 }
   \item{seed}{
 Numeric value. Random seed to use in \pkg{ConsensusClusterPlus} and \pkg{NMF}.
+}
+  \item{parallel}{
+Allows for parallel computation of the gap statistic bootstraps. WILL NOT WORK ON WINDOWS MACHINES (sorry).
+}
+  \item{gapBoot}{
+The number of gap statistic bootstraps to perform. This recursively calls COMMUNAL for each bootstrap, though the other validation measures do not have to be calculated for each call.
+}
+  \item{verbose}{
+Mostly output regarding clustering algorithms and gap statistic. 
+}
+  \item{mc.cores}{
+If null, uses detectCores(). Ignored if parallel=F.
 }
   \item{\dots}{
 Other arguments to pass down to \pkg{ConsensusClusterPlus}, \pkg{NMF}, and \pkg{clValid}.
@@ -73,7 +89,7 @@ rownames(data) <- paste("Gene", 1:nrow(data), sep="")
 result <- COMMUNAL(data=data, ks=seq(2,5))  # result is a COMMUNAL object
 k <- 3                                # suppose optimal cluster number is 3
 clusters <- result$getClustering(k)   # method to extract clusters
-mat.key <- clusterKeys(clusters, k=k) # get core clusters
+mat.key <- clusterKeys(clusters) # get core clusters
 examineCounts(mat.key)                # help decide agreement.thresh
 core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters (all algs agree)
 table(core) # the 'core' cluster sizes
@@ -85,7 +101,7 @@ result <- COMMUNAL(data = data, ks=c(2,3),
                       clus.methods = c("diana", "som", "pam", "kmeans", "ccp-hc", "nmf"),
                       validation=c('pearsongamma', 'avg.silwidth'))
 clusters <- result$getClustering(k=3)
-mat.key <- clusterKeys(clusters, k=3)
+mat.key <- clusterKeys(clusters)
 examineCounts(mat.key)
 core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters
 table(core) # the 'core' clusters

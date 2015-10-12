@@ -11,16 +11,18 @@ This package allows for identification of optimal clustering for a data set. It 
 \tabular{ll}{
 Package: \tab COMMUNAL\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2015-01-05\cr
+Version: \tab 1.1\cr
+Date: \tab 2015-08-12\cr
 License: \tab GPL-2\cr
 Imports: \tab clValid, fpc, methods\cr
 Depends: \tab R (>= 2.10), cluster\cr
 Suggests: \tab RUnit, NMF, ConsensusClusterPlus, rgl\cr
 }
 Start with a matrix of data to cluster. Important functions are:\cr
-\code{\link{COMMUNAL}} to run clustering algorithms\cr
-\code{\link{clusterRange}} to run clustering algorithms (harness for COMMUNAL) \cr
+\code{\link{COMMUNAL}} to run clustering algorithms once\cr
+\code{\link{clusterRange}} to run COMMUNAL across increasing subsets of data \cr
+\code{\link{getGoodAlgs}} to identify robust algorithms from \code{clusterRange} \cr
+\code{\link{getNonCorrNonMonoMeasures}} to identify non-monotonic, non-correlated validity measures from \code{clusterRange} \cr
 \code{\link{plotRange3D}} to pick k\cr
 \code{\link{clusterKeys}} to identify core clusters\cr
 \code{\link{returnCore}} to identify core clusters\cr
@@ -45,7 +47,7 @@ rownames(data) <- paste("Gene", 1:nrow(data), sep="")
 result <- COMMUNAL(data=data, ks=seq(2,5))  # result is a COMMUNAL object
 k <- 3                                # suppose optimal cluster number is 3
 clusters <- result$getClustering(k)   # method to extract clusters
-mat.key <- clusterKeys(clusters, k=k) # get core clusters
+mat.key <- clusterKeys(clusters)      # get core clusters
 examineCounts(mat.key)                # help decide agreement.thresh
 core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters (all algs agree)
 table(core) # the 'core' clusters
@@ -56,11 +58,18 @@ result <- COMMUNAL(data=data, ks=2:5,
 
 ## To identify k, use clusterRange and plotRange3D to visualize validation measures
 data(BRCA.100) # 533 tissues to cluster, with measurements of 100 genes each
-varRange <- c(50, 75, 100)
-clus.methods <- c("hierarchical", "kmeans")
-validation <- c('wb.ratio', 'dunn', 'avg.silwidth')
-range.results <- clusterRange(BRCA.100, varRange, ks=2:5, clus.methods=clus.methods,
-                              validation=validation)
-plot.data <- plotRange3D(range.results, ks=2:5, clus.methods, validation)
+varRange <- c(10,25,50,75,100)
+meas <- c("Connectivity", "average.between",
+          "ch", "sindex", "avg.silwidth", 
+          "average.within", "dunn", "widestgap",
+          "wb.ratio", "entropy", "dunn2", 
+          "pearsongamma", "g3", "within.cluster.ss", 
+          "min.separation", "max.diameter")
+BRCA.results <- clusterRange(BRCA.100, ks=2:6, varRange=varRange, validation=meas)
+
+goodMeasures <- getNonCorrNonMonoMeasures(BRCA.results)
+goodAlgs <- getGoodAlgs(BRCA.results)
+
+plot.data <- plotRange3D(BRCA.results, goodAlgs=goodAlgs, goodMeasures = goodMeasures)
 }
 }

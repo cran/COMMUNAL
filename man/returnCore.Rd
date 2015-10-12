@@ -29,26 +29,24 @@ Maintainer: Albert Chen acc2015@stanford.edu
 }
 \examples{
 # reindexes cluster numbers to agree
-k <- 3
 clusters <- data.frame(
   alg1=as.integer(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3)),
   alg2=as.integer(c(1,1,1,1,1,3,3,3,3,3,2,2,2,2,2)),
   alg3=as.integer(c(3,3,3,3,3,1,1,1,1,1,2,2,2,2,2))
 )
-mat.key <- clusterKeys(clusters, k)
+mat.key <- clusterKeys(clusters)
 mat.key # cluster indices are relabeled
 examineCounts(mat.key)
 core <- returnCore(mat.key, agreement.thresh=50) # find 'core' clusters
 table(core) # the 'core' clusters
 
 # some clusters assignments are undetermined
-k <- 3
 clusters <- data.frame(
   alg1=as.integer(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,1,1,2,2,3,3)),
   alg2=as.integer(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,1,2,2,3,3,1)),
   alg3=as.integer(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,2,3,1,1,2,3))
 )
-mat.key <- clusterKeys(clusters, k)
+mat.key <- clusterKeys(clusters)
 mat.key # last six samples have conflicting assignments
 examineCounts(mat.key)
 (core <- returnCore(mat.key, agreement.thresh=66)) # need at least 2 of 3 algs to agree

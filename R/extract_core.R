@@ -137,7 +137,8 @@ cleanClusters <- function(clusters, k, min.size=3) {
 }
 
 #### Public functions ####
-clusterKeys <- function(clusters, k, min.size=3) {
+clusterKeys <- function(clusters, min.size=3) {
+  k <- max(clusters, na.rm=T)
   clusters <- cleanClusters(clusters, k, min.size)
   opt.Alg <- optAlg(clusters, k)
   mat.key <- clusterKeys.internal(clusters, k, opt.Alg)
@@ -156,8 +157,9 @@ examineCounts <- function(mat.key) {
   tmp
 }
 
+# v1.1 changed <= agreement.thresh to < agreement.thresh
 returnCore <- function(mat.key, agreement.thresh=50) {
-  if(agreement.thresh < 50) cat("Warning: agreement threshold <50; may return ties for some samples")
+  if(agreement.thresh < 50) warning("agreement threshold <50; any ties resolved arbitrarily\n")
   # Here we examine whether the highest-voted cluster has less agreement than threshold
   # If less agreement, set to 0 
   index <- apply(mat.key, 1, function(row) max(table(row)/length(row)) <= agreement.thresh/100 )
@@ -165,8 +167,7 @@ returnCore <- function(mat.key, agreement.thresh=50) {
   thresholded[index, ] <- 0
   core <- apply(thresholded, 1, function(row) {
     tab <- table(row)
-    best <- max(tab)
-    names(tab)[tab==best]
+    names(tab)[tab==max(tab)][1]
   })
   cat("A total of", sum(index), 'samples were rejected as not robustly clustered.\n')
   cat(signif(sum(!index)/length(index),3)*100, "% samples remain.\n")

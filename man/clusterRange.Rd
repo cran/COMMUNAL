@@ -1,26 +1,44 @@
 \name{clusterRange}
 \alias{clusterRange}
 \title{
-COMMUNAL convenience harness
+Run COMMUNAL over a range of data subsets
 }
 \description{
-Convenience harness to run COMMUNAL on a range of inputs, for a fixed set of parameters. The columns are the points to be clustered. The goal is to reduce the dimensionality of the data points, and try clustering with a varying number of dimensions. The rows are (optionally) first sorted by variance. The top \code{x} rows are used for clustering by \code{\link{COMMUNAL}}, for each \code{x} in \code{varRange}.
+Convenience harness to run COMMUNAL on a range of data subsets, for a fixed set of parameters. In the data format, the columns are the items to be clustered. The rows are (optionally) first sorted by variance. The top \code{x} rows are used for clustering by \code{\link{COMMUNAL}}, for each \code{x} in \code{varRange}.
 Output is used by \code{\link{plotRange3D}} to generate 3D plot.
 }
 \usage{
-clusterRange(dataMtx, varRange, ...)
+clusterRange(dataMtx, ks, varRange, validation = "all", verbose = T, ..., 
+             parallel = F, mc.cores = NULL, row.order = NULL)
 }
 \arguments{
   \item{dataMtx}{
-The data for input to \code{\link{COMMUNAL}}.
+The data for input to \code{COMMUNAL}.
+}
+  \item{ks}{
+The range of K to test with \code{COMMUNAL}.
 }
   \item{varRange}{
 Numeric vector of how many items of data matrix to cluster.
-\code{clusterRange} runs \code{\link{COMMUNAL}} on the x rows (dimensions) with the highest variance
-for each element x in \code{varRange}.
+\code{clusterRange} runs \code{COMMUNAL} on the 1:x rows with the greatest variance for each element x in \code{varRange} (unless row.order is passed, in which case that is used instead of variance).
+}
+  \item{validation}{
+Validation measures to use in \code{COMMUNAL}. Defaults to "all".
+}
+  \item{verbose}{
+Whether to be verbose. Very helpful in identifying points of failure or delay; but, the output is very verbose.
 }
   \item{\dots}{
 Arguments to pass down to \code{\link{COMMUNAL}}. If \code{reorder=FALSE} is specified, then the rows will not be first sorted by variance in this function, and the rows will be taken in the given order. By default, rows are sorted by variance.
+}
+ \item{parallel}{
+clusterRange performs the same COMMUNAL run for each data subset; parallel capabilities have been implemented using the parallel::mclapply(). This function DOES NOT RUN ON WINDOWS MACHINES (sorry). 
+}
+\item{mc.cores}{
+optionally set the number of cores to use. Ignored if not parallel.
+}
+  \item{row.order}{
+If left NULL, the data is reordered in descending order of variance. Otherwise, data is subsetted by row.order according to varRange. So, if varRange = c(100,500), then the first subset will be the rows of data at row.order[1:100], and the second subset will be at row.order[1:500]. 
 }
 }
 \value{
